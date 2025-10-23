@@ -1,0 +1,20 @@
+{
+  "name": "mini-elearning-platform",
+  "version": "1.0.0",
+  "description": "A mini e-learning platform featuring courses and lessons.",
+  "main": "src/js/app.js",
+  "scripts": {
+    "start": "live-server src"
+  },
+  "keywords": [
+    "e-learning",
+    "courses",
+    "education"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "dependencies": {},
+  "devDependencies": {
+    "live-server": "^1.2.1"
+  }
+}

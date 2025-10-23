@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Course Details</title>
+    <link rel="stylesheet" href="css/main.css">
+</head>
+<body>
+    <header>
+        <h1>Course Details</h1>
+        <a href="index.html">Back to Courses</a>
+    </header>
+    <main>
+        <section id="course-info">
+            <h2 id="course-title"></h2>
+            <p id="course-description"></p>
+            <button id="complete-course-btn">Mark as Completed</button>
+        </section>
+        <section id="lessons">
+            <h3>Lessons</h3>
+            <ul id="lesson-list"></ul>
+        </section>
+        <section id="progress">
+            <h3>Progress</h3>
+            <progress id="progress-bar" value="0" max="100"></progress>
+            <span id="progress-text">0%</span>
+        </section>
+    </main>
+    <script src="js/main.js"></script>
+</body>
+</html>
