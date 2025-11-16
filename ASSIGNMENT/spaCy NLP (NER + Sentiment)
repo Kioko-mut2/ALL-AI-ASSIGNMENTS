@@ -1,0 +1,28 @@
+# Task 3: NLP - spaCy NER + Rule-Based Sentiment
+
+import spaCy
+
+# Load spaCy model
+nlp = spaCy.load("en_core_web_sm")
+
+# Example reviews
+reviews = [
+    "I love the Apple iPhone 12, the camera is amazing!",
+    "The Samsung Galaxy battery dies too quickly.",
+    "Google Pixel is decent but overpriced."
+]
+
+# Simple sentiment words
+positive_words = ["love", "amazing", "great", "excellent", "good"]
+negative_words = ["bad", "poor", "overpriced", "dies", "slow"]
+
+for review in reviews:
+    doc = nlp(review)
+    print("\nReview:", review)
+    print("Entities:", [(ent.text, ent.label_) for ent in doc.ents])
+    
+    # Rule-based sentiment
+    pos_score = sum(word in review.lower() for word in positive_words)
+    neg_score = sum(word in review.lower() for word in negative_words)
+    sentiment = "Positive" if pos_score > neg_score else "Negative"
+    print("Sentiment:", sentiment)
