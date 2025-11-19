@@ -1,0 +1,94 @@
+import tensorflow as tf
+import tensorflow_datasets as tfds
+import os
+
+BATCH_SIZE = 32
+IMG_SIZE = 224
+AUTOTUNE = tf.data.AUTOTUNE
+EPOCHS = 8
+FINE_TUNE_EPOCHS = 5
+
+# Load dataset (explicit split so code runs independently)
+(ds_train, ds_test), info = tfds.load(
+    "rock_paper_scissors",
+    split=["train[:80%]", "train[80%:]"],
+    with_info=True,
+    as_supervised=True
+)
+
+def preprocess(image, label):
+    image = tf.image.resize(image, (IMG_SIZE, IMG_SIZE))
+    image = tf.cast(image, tf.float32) / 255.0
+    return image, label
+
+train_ds = (
+    ds_train
+    .map(preprocess, num_parallel_calls=AUTOTUNE)
+    .cache()
+    .shuffle(1000)
+    .batch(BATCH_SIZE)
+    .prefetch(AUTOTUNE)
+)
+
+test_ds = (
+    ds_test
+    .map(preprocess, num_parallel_calls=AUTOTUNE)
+    .batch(BATCH_SIZE)
+    .cache()
+    .prefetch(AUTOTUNE)
+)
+
+num_classes = info.features['label'].num_classes
+
+# Build model
+base_model = tf.keras.applications.MobileNetV2(
+    input_shape=(IMG_SIZE, IMG_SIZE, 3),
+    include_top=False,
+    weights='imagenet'
+)
+base_model.trainable = False  # freeze base
+
+x = base_model.output
+x = tf.keras.layers.GlobalAveragePooling2D()(x)
+x = tf.keras.layers.Dropout(0.2)(x)
+output = tf.keras.layers.Dense(num_classes, activation='softmax')(x)
+
+model = tf.keras.Model(inputs=base_model.input, outputs=output)
+
+model.compile(
+    optimizer=tf.keras.optimizers.Adam(),
+    loss='sparse_categorical_crossentropy',
+    metrics=['accuracy']
+)
+
+model.summary()
+
+# Callbacks
+checkpoint_path = os.path.join(os.path.dirname(__file__), "best_model.h5")
+callbacks = [
+    tf.keras.callbacks.ModelCheckpoint(checkpoint_path, save_best_only=True, monitor='val_accuracy'),
+    tf.keras.callbacks.EarlyStopping(monitor='val_accuracy', patience=3, restore_best_weights=True)
+]
+
+# Initial training
+history = model.fit(train_ds, validation_data=test_ds, epochs=EPOCHS, callbacks=callbacks)
+
+# Fine-tune: unfreeze top layers of base_model
+base_model.trainable = True
+# Unfreeze last N layers for fine-tuning
+fine_tune_at = len(base_model.layers) - 30
+for layer in base_model.layers[:fine_tune_at]:
+    layer.trainable = False
+
+model.compile(
+    optimizer=tf.keras.optimizers.Adam(1e-5),
+    loss='sparse_categorical_crossentropy',
+    metrics=['accuracy']
+)
+
+history_fine = model.fit(train_ds, validation_data=test_ds, epochs=EPOCHS + FINE_TUNE_EPOCHS, initial_epoch=history.epoch[-1]+1, callbacks=callbacks)
+
+# Save final model
+final_path = os.path.join(os.path.dirname(__file__), "final_model")
+model.save(final_path)
+print("Saved model to", final_path)
