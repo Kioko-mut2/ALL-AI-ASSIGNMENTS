@@ -1,0 +1,99 @@
+# -----------------------------------------
+# TASK 2: Named Entity Recognition (FULL CODE)
+# -----------------------------------------
+import sys
+import subprocess
+import importlib
+import time
+
+def ensure_package(package_name, import_name=None):
+    name = import_name or package_name
+    try:
+        return importlib.import_module(name)
+    except Exception:
+        print(f"Package '{package_name}' not found. Installing...")
+        subprocess.check_call([sys.executable, "-m", "pip", "install", package_name])
+        time.sleep(0.5)
+        return importlib.import_module(name)
+
+# Ensure spaCy is available
+spacy = ensure_package("spacy")
+
+# Ensure model is available
+try:
+    nlp_pretrained = spacy.load("en_core_web_sm")
+except Exception:
+    print("spaCy model 'en_core_web_sm' not found. Downloading...")
+    subprocess.check_call([sys.executable, "-m", "spacy", "download", "en_core_web_sm"])
+    time.sleep(0.5)
+    nlp_pretrained = spacy.load("en_core_web_sm")
+
+from spacy.training.example import Example
+
+# -----------------------------------------
+# PART 1: Using Pre-trained NER (Working Demo)
+# -----------------------------------------
+
+sample_text = """
+Google announced a new AI centre in Kenya.
+The project will be led by Dr. Kioko, a senior ML engineer.
+Microsoft and OpenAI are also involved.
+"""
+
+print("\n--- PRETRAINED MODEL OUTPUT ---\n")
+doc = nlp_pretrained(sample_text)
+for ent in doc.ents:
+    print(ent.text, "->", ent.label_)
+
+# -----------------------------------------
+# PART 2: TRAINING A SIMPLE CUSTOM NER MODEL
+# (Prototype only – tiny dataset)
+# -----------------------------------------
+
+nlp_custom = spacy.blank("en")
+# Add NER component
+if "ner" not in nlp_custom.pipe_names:
+    ner = nlp_custom.add_pipe("ner")
+else:
+    ner = nlp_custom.get_pipe("ner")
+
+# Add label for training
+ner.add_label("PERSON")
+
+# Tiny training dataset (indices must match characters)
+train_data = [
+    ("Kioko teaches AI at university", {"entities": [(0, 5, "PERSON")]}),
+    ("I met Kioko during the ethics workshop", {"entities": [(6, 11, "PERSON")]}),
+]
+
+print("\n\n--- TRAINING CUSTOM MODEL ---\n")
+# Initialize the pipeline (sets up weights)
+nlp_custom.initialize(lambda: (spacy.blank("en").make_doc(""), [{"entities": []}]))
+
+# Training loop (very small example; results will be limited)
+for epoch in range(20):
+    losses = {}
+    # shuffle training data to avoid order effects
+    for text, annotations in train_data:
+        example = Example.from_dict(nlp_custom.make_doc(text), annotations)
+        nlp_custom.update([example], losses=losses)
+    print(f"Epoch {epoch+1} | Loss: {losses.get('ner', 0.0)}")
+
+# -----------------------------------------
+# PART 3: TESTING THE CUSTOM MODEL
+# -----------------------------------------
+
+test_text = "Yesterday Kioko submitted the AI Ethics assignment."
+
+print("\n\n--- CUSTOM MODEL TEST OUTPUT ---\n")
+doc2 = nlp_custom(test_text)
+for ent in doc2.ents:
+    print(ent.text, "->", ent.label_)
+
+# -----------------------------------------
+# PART 4: OUTPUT CLEAN FORMAT
+# -----------------------------------------
+
+print("\n\n--- FINAL SUMMARY OUTPUT ---\n")
+print("Pretrained model entities:", [(ent.text, ent.label_) for ent in doc])
+print("Custom model entities:", [(ent.text, ent.label_) for ent in doc2])
